@@ -3,6 +3,4 @@ website:
     contents:
       - index.ipynb
       - 00_core.ipynb
-      - section: imp
-        contents:
-          - imp/unet噪音去除.ipynb
+      - 23_1_6_unet噪音去除.ipynb

@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://doucx.github.io',
                 'git_url': 'https://github.com/doucx/blog',
                 'lib_path': 'blog'},
-  'syms': {'blog.core': {'blog.core.foo': ('core.html#foo', 'blog/core.py')}}}
+  'syms': {'blog.core': {'blog.core.foo': ('index.html#foo', 'blog/core.py')}}}
