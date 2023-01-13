@@ -3,4 +3,5 @@ website:
     contents:
       - index.ipynb
       - 00_core.ipynb
+      - 22_12_23_torch.nn.ipynb
       - 23_1_6_unet噪音去除.ipynb
