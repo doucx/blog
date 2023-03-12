@@ -31,3 +31,10 @@ website:
               - section: 03_09_模型的解释
                 contents:
                   - blog/posts/23_03_09_模型的解释/23_03_09_模型的解释.ipynb
+      - section: blog
+        contents:
+          - section: posts
+            contents:
+              - section: 03_11_聊天机器人尝试
+                contents:
+                  - blog/posts/23_03_11_聊天机器人尝试/23_03_11_聊天机器人尝试.ipynb
