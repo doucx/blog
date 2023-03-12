@@ -24,3 +24,10 @@ website:
               - section: 03_08_wcpdtoolbox
                 contents:
                   - blog/posts/23_03_08_wcpdtoolbox/23_03_08_wcpdtoolbox.ipynb
+      - section: blog
+        contents:
+          - section: posts
+            contents:
+              - section: 03_09_模型的解释
+                contents:
+                  - blog/posts/23_03_09_模型的解释/23_03_09_模型的解释.ipynb
