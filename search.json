@@ -1,0 +1,576 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Doucx’s blog",
+    "section": "",
+    "text": "这是Doucx的博客\n对每日的记录,相当于笔记"
+  },
+  {
+    "objectID": "index.html#其它",
+    "href": "index.html#其它",
+    "title": "Doucx’s blog",
+    "section": "其它:",
+    "text": "其它:\n\nWcpdToolBox\n自己用的方便工具\n见WcpDToolBox"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html",
+    "title": "人声增强",
+    "section": "",
+    "text": "from fastai.vision.all import *\nfrom fastai.text.all import *\nfrom fastai.collab import *\nfrom fastai.tabular.all import *"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#人声读取",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#人声读取",
+    "title": "人声增强",
+    "section": "人声读取",
+    "text": "人声读取\n\n位置\n利用glob获取每一个data的位置\n\nvoiceset = L(glob.glob('/ailearn/own/daily/dataset/dataset/voice_dataset/cv-corpus-11.0-delta-2022-09-21/en/clips/*.mp3'))\n\n\nvoiceset[0]\n\n'/ailearn/own/daily/dataset/dataset/voice_dataset/cv-corpus-11.0-delta-2022-09-21/en/clips/common_voice_en_34451548.mp3'\n\n\n\n\n读取\n使用pydub读取声音\n\nmp3 = AudioSegment.from_mp3(voiceset[0])\n\n\nmp3\n\n\n                    \n                        \n                        Your browser does not support the audio element.\n                    \n                  \n\n\n读取成功\n\n\n转换\n\narr = np.frombuffer(mp3.raw_data, dtype='int16')\n\n\nplt.plot(arr)\nplt.show()\n\n\n\n\n\nmp3.frame_rate\n\n32000\n\n\n\n\n组合\n\ndef getmp3raw(path):\n    mp3 = AudioSegment.from_mp3(path).set_frame_rate(32000)\n    return np.frombuffer(mp3.raw_data, dtype='int16')#,mp3.frame_rate\n\n\n\n导出\n\ndef exportwav(name, rate, arr):\n    arr.astype(np.int16)\n    scipy.io.wavfile.write(name, rate, arr)"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#环境声提取",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#环境声提取",
+    "title": "人声增强",
+    "section": "环境声提取",
+    "text": "环境声提取\n\n位置\n使用ESC-50数据集\n\nvoiceset2 = L(glob.glob('/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/*.wav'))\n\n\nvoiceset2\n\n(#2000) ['/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/4-195707-A-13.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/3-187710-A-11.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/4-204777-C-39.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/2-135649-A-45.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/1-90797-A-15.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/4-181955-A-3.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/1-22694-A-20.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/4-119648-D-48.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/1-56380-B-5.wav','/ailearn/own/daily/dataset/dataset/voice_dataset/ESC-50-master/audio/2-83536-A-27.wav'...]\n\n\n\n\n读取函数\n这边把所有文件都变成32000的采样率\n\ndef getwavraw(path):\n    wav = AudioSegment.from_wav(path).set_frame_rate(32000)\n    return np.frombuffer(wav.raw_data, dtype='int16')#,wav.frame_rate"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#声音合成",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#声音合成",
+    "title": "人声增强",
+    "section": "声音合成",
+    "text": "声音合成\n将两段声音加起来,就是叠加了\n这个函数输入两个数组,返回相同长度的三个数组\n\ndef getsumvoice(voice0,voice1):\n    a = len(voice0)\n    b = len(voice1)\n    if a>b:\n        voice0 = voice0[:b]\n    else:\n        voice1 = voice1[:a]\n    voice2 = voice1+voice0\n    \n    return voice0,voice1,voice2"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#播放numpy",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#播放numpy",
+    "title": "人声增强",
+    "section": "播放numpy",
+    "text": "播放numpy\n\ndef playarr(arr,rate=32000):\n    arr = array(arr)\n    arr = arr.astype(np.int16)\n    exportwav('temp/test.wav',rate,arr)\n    return AudioSegment.from_wav('temp/test.wav')"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#训练",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#训练",
+    "title": "人声增强",
+    "section": "训练",
+    "text": "训练\n\n随机生成拼合数据\n它的输出需要为频谱图,也就是进行stft处理\n并且,长宽得可以整除除32\n并且,需要变成同一大小以方便处理\n\ndef getrandsum(num, vset0=voiceset, vset1=voiceset2):\n    k = []\n    for _ in range(num):\n        # 随机生成数字\n        i = random.randint(0, len(vset0)-1)\n        j = random.randint(0, len(vset1)-1)\n        # 获取数据\n        arr0 = getmp3raw(vset0[i]).astype(np.float32())\n        arr1 = getwavraw(vset1[j]).astype(np.float32())\n        arr0, arr1, arr2 = getsumvoice(arr0, arr1)\n        # 生成\n        arr0 = tensor(arr0.copy()).reshape(-1)\n        arr2 = tensor(arr2.copy()).reshape(-1)\n\n        arr0 = torch.stft(arr0, 511, return_complex=False)\n        arr2 = torch.stft(arr2, 511, return_complex=False)\n\n        o = torch.zeros((256, 1344, 2))\n        p = torch.zeros((256, 1344, 2))\n\n        if arr0.shape[1] < 1344:\n            #print(arr0.shape[1])\n            o[:, :arr0.shape[1]] = arr0\n            p[:, :arr0.shape[1]] = arr2\n        else:\n            #print(arr0.shape[1])\n            o = arr0[:, :1344]\n            p = arr2[:, :1344]\n        # arr0 = arr0[:, :-(arr0.shape[1] % 32), :]\n        # arr2 = arr2[:, :-(arr2.shape[1] % 32), :]\n\n        k.append([o, p])\n    return k\n\n\nx = getrandsum(1, voiceset,voiceset2)\n\n\nx[0][0].shape\n\ntorch.Size([256, 1344, 2])\n\n\n\n\n逆处理至音频\n\ndestft = (lambda x:torch.istft(x, 511,return_complex=False))\n\n\n\n生成数据集\n使用fastai的数据块\n\ndl = DataBlock(\n    get_items=getrandsum,\n    get_x=(lambda x:x[1]),\n    get_y=(lambda x:x[0])\n)\n\n\n\n检查数据\n\nx = dls.dataset[0][0]\n\n\ny = dls.dataset[0][1]\n\n\nplt.plot(destft(x))\n\n/tmp/ipykernel_364/968818733.py:1: UserWarning: istft will require a complex-valued input tensor in a future PyTorch release. Matching the output from stft with return_complex=True.  (Triggered internally at /var/lib/jenkins/pytorch/aten/src/ATen/native/SpectralOps.cpp:978.)\n  destft = (lambda x:torch.istft(x, 511,return_complex=False))\n\n\n\n\n\n\nplt.plot(destft(y))\n\n\n\n\n\ndls.dataset[0][0].shape\n\ntorch.Size([256, 1344, 2])\n\n\n\n\n定义模型\n一个简单的Unet\n目标:\n识别噪音 -> 产生掩盖 -> 相乘\n因为Unet的特性,它应当可以识别到噪音的特征,并反向至目标\n\nclass Decoder(nn.Module):\n    def __init__(self, in_channels, middle_channels, out_channels):\n        super(Decoder, self).__init__()\n        \n        self.up = nn.ConvTranspose2d(\n            in_channels, out_channels, kernel_size=2, stride=2)\n        \n        self.conv_relu = nn.Sequential(\n            nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),\n            nn.ReLU(inplace=True)\n        )\n\n    def forward(self, x1, x2):\n        \n        x1 = self.up(x1)\n        # print(x1.shape,x2.shape)\n        x1 = torch.cat((x1, x2), dim=1)\n        x1 = self.conv_relu(x1)\n        return x1\n\n\nimport torchvision\n\n注意:下采样时需要使输出为偶数尺寸\n并且最好在输入数据时进行标准化-对数缩放\n\nclass Unet(nn.Module):\n    def __init__(self):\n        super(Unet, self).__init__()\n\n        self.base_model = torchvision.models.resnet18(True)  # 不使用预训练模型\n        self.base_layers = list(self.base_model.children())\n\n        self.layer1 = nn.Sequential(\n            nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(  # 数据有两个通道\n                2, 2), padding=(3, 3), bias=False),\n            self.base_layers[1],\n            self.base_layers[2])\n\n        self.layer2 = nn.Sequential(*self.base_layers[3:5])\n        self.layer3 = self.base_layers[5]\n        self.layer4 = self.base_layers[6]\n        self.layer5 = self.base_layers[7]\n\n        self.decode4 = Decoder(512, 256+256, 256)\n        self.decode3 = Decoder(256, 256+128, 256)\n        self.decode2 = Decoder(256, 128+64, 128)\n        self.decode1 = Decoder(128, 64+64, 64)\n\n        self.decode0 = nn.Sequential(\n            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),\n            nn.Conv2d(64, 32, kernel_size=3, padding=1, bias=False),\n            nn.Conv2d(32, 64, kernel_size=3, padding=1, bias=False)\n        )\n\n        self.conv_last = nn.Conv2d(64, 2, 1)  # 这边转换为二通道数据\n\n    def forward(self, inp):\n        # 输入: 1,257,1251,2\n\n        inp = inp.permute(0, 3, 1, 2)  # 输入: 1,2,257,1251\n\n        e1 = self.layer1(\n            torch.log1p(inp.abs())\n        )  # 64,128,128\n\n        e2 = self.layer2(e1)  # 64,64,64\n        e3 = self.layer3(e2)  # 128,32,32\n        e4 = self.layer4(e3)  # 256,16,16\n        # print(inp.shape)\n        # print('e1',e1.shape)\n        # print('e2',e2.shape)\n        # print('e3',e3.shape)\n        # print('e4',e4.shape)\n        f = self.layer5(e4)  # 512,8,8\n        # print(f.shape)\n        d4 = self.decode4(f, e4)  # 256,16,16\n        d3 = self.decode3(d4, e3)  # 256,32,32\n        d2 = self.decode2(d3, e2)  # 128,64,64\n        d1 = self.decode1(d2, e1)  # 64,128,128\n        d0 = self.decode0(d1)  # 64,256,256\n\n        out = self.conv_last(d0)  # 1,256,256\n        #out = F.relu(out)\n\n        out = inp*out\n        out = out.permute(0, 2, 3, 1)\n\n        return out\n\n实际上,直接abs再log1p其实并没有那么合理\n理论上来讲,需要把负数和正数分开\n\nm = Unet()\n\n/opt/conda/lib/python3.8/site-packages/torchvision-0.14.0a0+bd70a78-py3.8-linux-x86_64.egg/torchvision/models/_utils.py:135: UserWarning: Using 'weights' as positional parameter(s) is deprecated since 0.13 and will be removed in 0.15. Please use keyword parameter(s) instead.\n  warnings.warn(\n/opt/conda/lib/python3.8/site-packages/torchvision-0.14.0a0+bd70a78-py3.8-linux-x86_64.egg/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and will be removed in 0.15. The current behavior is equivalent to passing `weights=ResNet18_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet18_Weights.DEFAULT` to get the most up-to-date weights.\n  warnings.warn(msg)\n\n\n\n\n训练\n\ndls = dl.dataloaders(128,bs=4)\n\n\nlearn = Learner(dls,\n               m,\n               loss_func=MSELossFlat())\n\n\nm = learn.model\n\n\nlearn.lr_find()\n\n\n\n\n\n\n\n\nSuggestedLRs(valley=6.30957365501672e-05)\n\n\n\n\n\n\nlearn.fit_one_cycle(10,lr_max=1e-4,wd=0.1)\n\n\n\n\n\n\n\n  \n    \n      epoch\n      train_loss\n      valid_loss\n      time\n    \n  \n  \n    \n      0\n      463752384.000000\n      390580512.000000\n      00:08\n    \n    \n      1\n      513132544.000000\n      886195328.000000\n      00:08\n    \n    \n      2\n      528690720.000000\n      1785890048.000000\n      00:08\n    \n    \n      3\n      597021952.000000\n      470242112.000000\n      00:08\n    \n    \n      4\n      541548928.000000\n      366129024.000000\n      00:08\n    \n    \n      5\n      509931136.000000\n      412959200.000000\n      00:08\n    \n    \n      6\n      471381600.000000\n      377111712.000000\n      00:08\n    \n    \n      7\n      442928384.000000\n      398048704.000000\n      00:08\n    \n    \n      8\n      415480256.000000\n      361367008.000000\n      00:08\n    \n    \n      9\n      394238304.000000\n      384502208.000000\n      00:08\n    \n  \n\n\n\n可以使用"
+  },
+  {
+    "objectID": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#查看结果",
+    "href": "blog/posts/23_01_06_unet噪音去除/01_06_unet噪音去除.html#查看结果",
+    "title": "人声增强",
+    "section": "查看结果",
+    "text": "查看结果\n\ndef getvidds(num, dls=dls):\n    ds = dls.valid_ds[num]\n    inp = torch.istft(ds[0], 511).cpu().numpy()\n    targ = torch.istft(ds[1], 511).cpu().numpy()\n    see = m(torch.unsqueeze(ds[0],0).cuda()).cpu().detach()\n    pred = torch.istft(see, 511).reshape(-1).numpy()\n    return inp, targ, pred,see\n\n\ninp,targ,pred,see = getvidds(1)\n\n\nsee.shape\n\ntorch.Size([1, 256, 1344, 2])\n\n\n\nax1 = plt.subplot(221)\nax2 = plt.subplot(222)\nax3 = plt.subplot(223)\nax4 = plt.subplot(224)\nax1.plot(inp)\nax2.plot(targ)\nax3.plot(pred)\nax4.imshow(np.log1p(see[0,:,:,0].abs()))\n\n<matplotlib.image.AxesImage>\n\n\n\n\n\n听听看\n\nplayarr(inp)\n\n\n                    \n                        \n                        Your browser does not support the audio element.\n                    \n                  \n\n\n\nplayarr(targ)\n\n\n                    \n                        \n                        Your browser does not support the audio element.\n                    \n                  \n\n\n\nplayarr(pred)\n\n\n                    \n                        \n                        Your browser does not support the audio element.\n                    \n                  \n\n\n效果…还可以吧\n\n保存\n\nlearn.save('unet_voice')\n\nPath('models/unet_voice.pth')\n\n\n\nlearn.load('unet_voice')\n\n<fastai.learner.Learner>"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html",
+    "title": "torch.nn",
+    "section": "",
+    "text": "import kaggle\nimport zipfile\nfrom fastkaggle import *\nfrom fastcore import *\nfrom fastbook import *\nfrom fastcore.all import *\nimport fastbook\nfastbook.setup_book()\nimport torch\nfrom torch.autograd import Variable\nfrom torch import autograd\nimport torch.nn as nn\nfrom torchvision import transforms"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.module",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.module",
+    "title": "torch.nn",
+    "section": "nn.Module",
+    "text": "nn.Module\n一个基本的卷积网络，包含初始化和forward\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        self.conv1 = nn.Conv2d(1, 20, 5)  # submodule: Conv2d\n        self.conv2 = nn.Conv2d(20, 20, 5)\n\n    def forward(self, x):\n        x = F.relu(self.conv1(x))\n        return F.relu(self.conv2(x))\n\n可见，其中包含： - __init__ 模型初始化方法 - super(Model, self).__init__() 初始化上一层 - forward 前向传播"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#add_modulename-module",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#add_modulename-module",
+    "title": "torch.nn",
+    "section": "add_module(name, module)",
+    "text": "add_module(name, module)\n将一个 child module 添加到当前 modle。\n被添加的module可以通过 name属性来获取。 例：\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        self.add_module(\"conv\", nn.Conv2d(10, 20, 4))\n\n        # self.conv = nn.Conv2d(10, 20, 4) 和上面这个增加module的方式等价\nmodel = Model()\nprint(model.conv)\n\nConv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#children",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#children",
+    "title": "torch.nn",
+    "section": "children()",
+    "text": "children()\n返回模型子模块的迭代器\n\nmodel = resnet18()\n\n\ni = 0\nfor sub_module in model.children():\n    i += 1\n    print(sub_module)\n    if i == 4:\n        break\n\nConv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)\nBatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\nReLU(inplace=True)\nMaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#cpudevice_idnone",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#cpudevice_idnone",
+    "title": "torch.nn",
+    "section": "cpu(device_id=None)",
+    "text": "cpu(device_id=None)\n将所有的模型参数(parameters)和buffers复制到CPU\n\nmodel = model.cpu()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#cudadevice_idnone",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#cudadevice_idnone",
+    "title": "torch.nn",
+    "section": "cuda(device_id=None)",
+    "text": "cuda(device_id=None)\n将所有的模型参数(parameters)和buffers赋值GPU\n参数说明:\ndevice_id (int, optional) – 如果指定的话，所有的模型参数都会复制到指定的设备上。\n\nmodel = model.cuda()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#double",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#double",
+    "title": "torch.nn",
+    "section": "double()",
+    "text": "double()\n将parameters和buffers的数据类型转换成double。\n\nmodel = model.double()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#eval",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#eval",
+    "title": "torch.nn",
+    "section": "eval()",
+    "text": "eval()\n将模型设置成evaluation模式\n仅仅当模型中有Dropout和BatchNorm是才会有影响。\n\nmodel = model.eval()\n\n若是在模型的非训练阶段（如 evaluation 阶段）未使用 model.eval() 将 model 设置成评估模式，有可能会造成同一样本的多次推断结果不一致的情况"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#float",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#float",
+    "title": "torch.nn",
+    "section": "float()",
+    "text": "float()\n将parameters和buffers的数据类型转换成float。\n\nmodel = model.float()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#forward-input",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#forward-input",
+    "title": "torch.nn",
+    "section": "forward(* input)",
+    "text": "forward(* input)\n定义了每次执行的 计算步骤。 在所有的子类中都需要重写这个函数。\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        self.conv1 = nn.Conv2d(1, 20, 5)  # submodule: Conv2d\n        self.conv2 = nn.Conv2d(20, 20, 5)\n\n    def forward(self, x):\n        x = F.relu(self.conv1(x))\n        return F.relu(self.conv2(x))\n\n就是这个forward"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#half",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#half",
+    "title": "torch.nn",
+    "section": "half()",
+    "text": "half()\n将parameters和buffers的数据类型转换成half。\n\nmodel = model.half()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#load_state_dictstate_dict",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#load_state_dictstate_dict",
+    "title": "torch.nn",
+    "section": "load_state_dict(state_dict)",
+    "text": "load_state_dict(state_dict)\n将state_dict中的parameters和buffers复制到此module和它的后代中。state_dict中的key必须和 model.state_dict()返回的key一致。 NOTE：用来加载模型参数。\n参数说明:\nstate_dict (dict) – 保存parameters和persistent buffers的字典。\n\nmodel = resnet18()\n\n\nmodel.load_state_dict(resnet18().state_dict())\n\n<All keys matched successfully>"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#modules",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#modules",
+    "title": "torch.nn",
+    "section": "modules()",
+    "text": "modules()\n返回一个包含 当前模型 所有模块的迭代器。\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        self.add_module(\"conv\", nn.Conv2d(10, 20, 4))\n        self.add_module(\"conv1\", nn.Conv2d(20, 10, 4))\n\n\nmodel = Model()\n\n\nfor module in model.modules():\n    print(module)\n    print('-------------CUTTHERE---------------')\n\nModel(\n  (conv): Conv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n  (conv1): Conv2d(20, 10, kernel_size=(4, 4), stride=(1, 1))\n)\n-------------CUTTHERE---------------\nConv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n-------------CUTTHERE---------------\nConv2d(20, 10, kernel_size=(4, 4), stride=(1, 1))\n-------------CUTTHERE---------------\n\n\n可以看见，它输出了所有的模块\n重复的模块只被返回一次(children()也是)\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        submodule = nn.Conv2d(10, 20, 4)\n        self.add_module('conv1', submodule)\n        self.add_module('cv2', submodule)\n        self.add_module('cv20', submodule)\n\n\nmodel = Model()\n\n\nfor module in model.modules():\n    print(module)\n    print('-------------CUTTHERE---------------')\n\nModel(\n  (conv1): Conv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n  (cv2): Conv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n  (cv20): Conv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n)\n-------------CUTTHERE---------------\nConv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))\n-------------CUTTHERE---------------"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#named_children",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#named_children",
+    "title": "torch.nn",
+    "section": "named_children()",
+    "text": "named_children()\n返回 包含 模型当前子模块 的迭代器，yield 模块名字和模块本身。\n\nfor name, module in model.named_children():\n    # if name in ['conv4', 'conv5']:\n    print(name, module)\n\nconv1 Conv2d(10, 20, kernel_size=(4, 4), stride=(1, 1))"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#parametersmemonone",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#parametersmemonone",
+    "title": "torch.nn",
+    "section": "parameters(memo=None)",
+    "text": "parameters(memo=None)\n返回一个 包含模型所有参数 的迭代器。\n一般用来当作optimizer的参数。\n\nmodel = Model()\n\n\nfor i in model.parameters():\n    print(type(i.data), i.size())\n\n<class 'torch.Tensor'> torch.Size([20, 10, 4, 4])\n<class 'torch.Tensor'> torch.Size([20])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#state_dictdestinationnone-prefixsource",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#state_dictdestinationnone-prefixsource",
+    "title": "torch.nn",
+    "section": "state_dict(destination=None, prefix=’’)[source]",
+    "text": "state_dict(destination=None, prefix=’’)[source]\n返回一个字典，保存着module的所有状态（state）。\nparameters和persistent buffers都会包含在字典中，字典的key就是parameter和buffer的 names。\n例子：\n\nclass Model(nn.Module):\n    def __init__(self):\n        super(Model, self).__init__()\n        self.conv2 = nn.Linear(1, 2)\n        self.vari = Variable(torch.rand([1]))\n        self.par = nn.Parameter(torch.rand([1]))\n        self.register_buffer(\"buffer\", torch.randn([2, 3]))\n\n    def forward(self, x):\n        x = self.conv2(x)\n        return x\n\n\nmodel = Model()\nprint(model.state_dict())  # .keys())\n\nOrderedDict([('par', tensor([0.4542])), ('buffer', tensor([[ 2.1136,  0.1283,  0.4152],\n        [ 1.4492, -0.8829,  0.0859]])), ('conv2.weight', tensor([[-0.0936],\n        [ 0.7408]])), ('conv2.bias', tensor([-0.8880, -0.3095]))])\n\n\nNOTE：.keys():显示OrderedDict的key\n\nprint(model.state_dict().keys())\n\nodict_keys(['par', 'buffer', 'conv2.weight', 'conv2.bias'])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#trainmodetrue",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#trainmodetrue",
+    "title": "torch.nn",
+    "section": "train(mode=True)",
+    "text": "train(mode=True)\n将module设置为 training mode。\n仅仅当模型中有Dropout和BatchNorm是才会有影响。"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#zero_grad",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#zero_grad",
+    "title": "torch.nn",
+    "section": "zero_grad()",
+    "text": "zero_grad()\n将module中的所有模型参数的梯度设置为0.\n\nmodel.zero_grad()"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.sequential-args",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.sequential-args",
+    "title": "torch.nn",
+    "section": "class torch.nn.Sequential(* args)",
+    "text": "class torch.nn.Sequential(* args)\n一个时序容器。Modules 会以他们传入的顺序被添加到容器中。当然，也可以传入一个OrderedDict。\n\nmodel = nn.Sequential(\n    nn.Conv2d(1, 20, 5),\n    nn.ReLU(),\n    nn.Conv2d(20, 64, 5),\n    nn.ReLU()\n)\n# Example of using Sequential with OrderedDict\nmodel = nn.Sequential(OrderedDict([\n    ('conv1', nn.Conv2d(1, 20, 5)),\n    ('relu1', nn.ReLU()),\n    ('conv2', nn.Conv2d(20, 64, 5)),\n    ('relu2', nn.ReLU())\n]))\n\n\nmodel\n\nSequential(\n  (conv1): Conv2d(1, 20, kernel_size=(5, 5), stride=(1, 1))\n  (relu1): ReLU()\n  (conv2): Conv2d(20, 64, kernel_size=(5, 5), stride=(1, 1))\n  (relu2): ReLU()\n)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.modulelistmodulesnone",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.modulelistmodulesnone",
+    "title": "torch.nn",
+    "section": "class torch.nn.ModuleList(modules=None)",
+    "text": "class torch.nn.ModuleList(modules=None)\n将submodules保存在一个list中。\nModuleList可以像一般的Python list一样被索引。而且ModuleList中包含的modules已经被正确的注册，对所有的module method可见。\n\nclass MyModule(nn.Module):\n    def __init__(self):\n        super(MyModule, self).__init__()\n        self.linears = nn.ModuleList([nn.Linear(10, 10) for i in range(10)])\n\n    def forward(self, x):\n        # ModuleList can act as an iterable, or be indexed         using ints\n        for i, l in enumerate(self.linears):\n            x = self.linears[i // 2](x) + l(x)\n        return x\n\n\nmodel = MyModule()\n\n\nfor module in model.modules():\n    print(module)\n    print('-------------CUTTHERE---------------')\n\nMyModule(\n  (linears): ModuleList(\n    (0): Linear(in_features=10, out_features=10, bias=True)\n    (1): Linear(in_features=10, out_features=10, bias=True)\n    (2): Linear(in_features=10, out_features=10, bias=True)\n    (3): Linear(in_features=10, out_features=10, bias=True)\n    (4): Linear(in_features=10, out_features=10, bias=True)\n    (5): Linear(in_features=10, out_features=10, bias=True)\n    (6): Linear(in_features=10, out_features=10, bias=True)\n    (7): Linear(in_features=10, out_features=10, bias=True)\n    (8): Linear(in_features=10, out_features=10, bias=True)\n    (9): Linear(in_features=10, out_features=10, bias=True)\n  )\n)\n-------------CUTTHERE---------------\nModuleList(\n  (0): Linear(in_features=10, out_features=10, bias=True)\n  (1): Linear(in_features=10, out_features=10, bias=True)\n  (2): Linear(in_features=10, out_features=10, bias=True)\n  (3): Linear(in_features=10, out_features=10, bias=True)\n  (4): Linear(in_features=10, out_features=10, bias=True)\n  (5): Linear(in_features=10, out_features=10, bias=True)\n  (6): Linear(in_features=10, out_features=10, bias=True)\n  (7): Linear(in_features=10, out_features=10, bias=True)\n  (8): Linear(in_features=10, out_features=10, bias=True)\n  (9): Linear(in_features=10, out_features=10, bias=True)\n)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------\nLinear(in_features=10, out_features=10, bias=True)\n-------------CUTTHERE---------------"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#appendmodule",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#appendmodule",
+    "title": "torch.nn",
+    "section": "append(module)",
+    "text": "append(module)\n等价于 list 的 append()\n参数说明:\nmodule (nn.Module) – 要 append 的module\n\nlist0.append(nn.Linear(1, 10))\n\nModuleList(\n  (0): Linear(in_features=1, out_features=10, bias=True)\n  (1): Linear(in_features=1, out_features=10, bias=True)\n  (2): Linear(in_features=1, out_features=10, bias=True)\n  (3): Linear(in_features=1, out_features=10, bias=True)\n  (4): Linear(in_features=1, out_features=10, bias=True)\n  (5): Linear(in_features=1, out_features=10, bias=True)\n  (6): Linear(in_features=1, out_features=10, bias=True)\n  (7): Linear(in_features=1, out_features=10, bias=True)\n  (8): Linear(in_features=1, out_features=10, bias=True)\n)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#extendmodules",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#extendmodules",
+    "title": "torch.nn",
+    "section": "extend(modules)",
+    "text": "extend(modules)\n等价于 list 的 extend() 方法\n参数说明:\nmodules (list) – list of modules to append\n\nlist0 = nn.ModuleList([nn.Linear(1, 10)])\n\n\nlist0\n\nModuleList(\n  (0): Linear(in_features=1, out_features=10, bias=True)\n)\n\n\n\nlist0.extend([nn.Linear(1, 10), nn.Linear(1, 10)])\n\nModuleList(\n  (0): Linear(in_features=1, out_features=10, bias=True)\n  (1): Linear(in_features=1, out_features=10, bias=True)\n  (2): Linear(in_features=1, out_features=10, bias=True)\n)\n\n\nextend输入迭代器/列表等，append输入一个数据"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.conv1d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.conv1d",
+    "title": "torch.nn",
+    "section": "class torch.nn.Conv1d",
+    "text": "class torch.nn.Conv1d\n\nin_channels(int)\n\n输入信号的通道(比如RGB)\n\nout_channels(int)\n\n卷积产生的通道（比如六个通道）\n\nkerner_size(int or tuple)\n\n卷积核的尺寸\n\nstride(int or tuple, optional)\n\n卷积步长（用来节省计算量）\n\npadding (int or tuple, optional)\n\n输入的每一条边补充0的层数（补充边缘）\n\ndilation(int or tuple, `optional``)\n\n卷积核元素之间的间距（空洞卷积）\n\ngroups(int, optional)\n\n从输入通道到输出通道的阻塞连接数（控制输入和输出之间的连接， group=1，输出是所有的输入的卷积；group=2，此时相当于有并排的两个卷积层，每个卷积层计算输入通道的一半，并且产生的输出是输出通道的一半，随后将这两个输出连接起来。）\n\nbias(bool, optional) - 如果bias=True，添加偏置\n\n\nm = nn.Conv1d(16, 33, 3, stride=2)\ninput0 = torch.autograd.Variable(torch.randn(1, 16, 3))\noutput = m(input0)\n\n注意：对于一组图片，会产生一组输出\n图片叠加在第一维度\n比如torch.randn(10, 16, 3)在这里相当于十张大小为长3通道16的图片\n\noutput.size()\n\ntorch.Size([1, 33, 1])\n\n\nnn.Conv2d,3d同理，只有卷积核尺寸不同"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.convtranspose1d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#class-torch.nn.convtranspose1d",
+    "title": "torch.nn",
+    "section": "class torch.nn.ConvTranspose1d",
+    "text": "class torch.nn.ConvTranspose1d\n1维的解卷积（转置卷积）操作（transposed convolution operator，注意改视作操作可视作解卷积操作，但并不是真正的解卷积操作） 该模块可以看作是Conv1d相对于其输入的梯度，有时（但不正确地）被称为解卷积操作。\n很显然，它会丢失信息，并且会产生棋盘格伪影\n输入：\nclass torch.nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0, groups=1, bias=True)\n\nin_channels(int) – 输入信号的通道数\nout_channels(int) – 卷积产生的通道\nkernel_size(int or tuple) - 卷积核的大小\nstride(int or tuple, optional) - 卷积步长\npadding(int or tuple, optional) - 输入的每一条边补充0的层数\noutput_padding(int or tuple, optional) - 输出的每一条边补充0的层数\ndilation(int or tuple, optional) – 卷积核元素之间的间距\ngroups(int, optional) – 从输入通道到输出通道的阻塞连接数\nbias(bool, optional) - 如果bias=True，添加偏置\n\n\nim = PILImage.create(imgpath[0])\n\n\ndata = untar_data(URLs.PETS)\n\nimgpath = get_image_files(data/'images')\n\nimg = ToTensor()(PILImage.create(imgpath[0]))\n\nimg = img.float()\n\nimg = img.unsqueeze(0)\n\n创建一个卷积核\n\nconv = nn.Conv2d(3, 1, 3, 2)\n\nimgc = conv(img)\n\nimga = array(imgc.detach())\n\nplt.imshow(imga[0][0])\n\n<matplotlib.image.AxesImage>\n\n\n\n\n\n转置卷积\n\nconvt = nn.ConvTranspose2d(1, 3, 3, 2)\n\n\nimgc.size()\n\ntorch.Size([1, 1, 187, 249])\n\n\n\nimgc[0].size()\n\ntorch.Size([1, 187, 249])\n\n\n\nimgt = convt(imgc[0])\n\n\nimgt = imgt*255\n\n\nimgt = imgt.int()\n\n\nimgt = array(imgt.detach())\n\n\ntim = transforms.ToPILImage()\n\n\ntim(imgc[0])\n\n\n\n\n正常来说用不到这个）"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.maxpool1d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.maxpool1d",
+    "title": "torch.nn",
+    "section": "nn.MaxPool1d",
+    "text": "nn.MaxPool1d\n最大池化\n\nkernel_size(int or tuple) - max pooling的窗口大小\nstride(int or tuple, optional) - max pooling的窗口移动的步长。默认值是kernel_size\npadding(int or tuple, optional) - 输入的每一条边补充0的层数\ndilation(int or tuple, optional) – 一个控制窗口中元素步幅的参数\nreturn_indices - 如果等于True，会返回输出最大值的序号，对于上采样操作会有帮助\nceil_mode - 如果等于True，计算输出信号大小的时候，会使用向上取整，代替默认的向下取整的操作"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.avgpool1d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.avgpool1d",
+    "title": "torch.nn",
+    "section": "nn.AvgPool1d",
+    "text": "nn.AvgPool1d\n平均池化"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.fractionalmaxpool2d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.fractionalmaxpool2d",
+    "title": "torch.nn",
+    "section": "nn.FractionalMaxPool2d",
+    "text": "nn.FractionalMaxPool2d\n分数最大化池化\n\nkernel_size(int or tuple) - 最大池化操作时的窗口大小。可以是一个数字（表示KK的窗口），也可以是一个元组（khkw）\noutput_size - 输出图像的尺寸。可以使用一个tuple指定(oH,oW)，也可以使用一个数字oH指定一个oH*oH的输出。\noutput_ratio – 将输入图像的大小的百分比指定为输出图片的大小，使用一个范围在(0,1)之间的数字指定\nreturn_indices - 默认值False，如果设置为True，会返回输出的索引，索引对 nn.MaxUnpool2d有用。\n\n也就是说，它可以对任意大小的东西进行最大池化，并输出相同/相同比例大小的图片\n有点像最近邻采样"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lppool2d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lppool2d",
+    "title": "torch.nn",
+    "section": "nn.LPPool2d",
+    "text": "nn.LPPool2d\n二维幂平均池化\n也就是一个结合了最大池化和平均池化的方法\nm = nn.LPPool2d(p, (3, 2), stride=(2, 1))\n- 当p为无穷大的时候时，等价于最大池化操作 - 当p=1时，等价于平均池化操作"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.adaptivemaxpool2d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.adaptivemaxpool2d",
+    "title": "torch.nn",
+    "section": "nn.AdaptiveMaxPool2d",
+    "text": "nn.AdaptiveMaxPool2d\n自适应最大池化\n\noutput_size: 输出信号的尺寸,可以用（H,W）表示HW的输出，也可以使用数字H表示HH大小的输出\nreturn_indices: 如果设置为True，会返回输出的索引。对 nn.MaxUnpool2d有用，默认值是False"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#torch.nn.relu",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#torch.nn.relu",
+    "title": "torch.nn",
+    "section": "torch.nn.ReLU",
+    "text": "torch.nn.ReLU\n线性整流单元(也就是把小于零的变成0）\n\\({ReLU}(x)= max(0, x)\\)\n\nx = torch.arange(-10, 10)\ny = nn.ReLU()(x)\n\nplt.plot(x, y);"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.relu6",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.relu6",
+    "title": "torch.nn",
+    "section": "nn.ReLU6",
+    "text": "nn.ReLU6\n对输入的每一个元素运用函数\n\\({ReLU6}(x) = min(max(0,x), 6)\\)\n也就是把小于0的变成0,大于6的变成6\n\nx = torch.arange(-10, 10)\ny = nn.ReLU6()(x)\n\nplt.plot(x, y);"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.elu",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.elu",
+    "title": "torch.nn",
+    "section": "nn.ELU",
+    "text": "nn.ELU\n对输入的每一个元素运用函数\n\\(f(x) = max(0,x) + min(0, alpha * (e^x - 1))\\)\n\nx = torch.linspace(-10, 10, 100)\ny = nn.ELU(10)(x)\n\nplt.plot(x, y);\n\n\n\n\n也就是对于0以下的，使用e**x，对于0以上的，使用普通的ReLU"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.prelu",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.prelu",
+    "title": "torch.nn",
+    "section": "nn.PReLU",
+    "text": "nn.PReLU\n对输入的每一个元素运用函数\\(PReLU(x) = max(0,x) + a * min(0,x)\\)\na是一个可学习参数。当没有声明时，nn.PReLU()在所有的输入中只有一个参数a；如果是nn.PReLU(nChannels)，a将应用到每个输入。\n\nnum_parameters=1 -需要学习的a的个数\n\ninit=0.25 -a的默认值\n\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.PReLU(num_parameters=1, init=-1)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n也就是说，这是一个在负值上进行y=ax，正值进行y=x的函数\n不要对a使用权重衰减"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.leakyrelu",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.leakyrelu",
+    "title": "torch.nn",
+    "section": "nn.LeakyReLU",
+    "text": "nn.LeakyReLU\n\nnegative_slope：控制负斜率的角度，默认等于0.01\ninplace-选择是否进行覆盖运算\n\n对输入的每一个元素运用\\(f(x) = max(0, x) + {negative_slope} * min(0, x)\\)\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.LeakyReLU(-1)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n与PReLU差不多，但是a固定"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.threshold",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.threshold",
+    "title": "torch.nn",
+    "section": "nn.Threshold",
+    "text": "nn.Threshold\n\nthreshold：阈值\nvalue：输入值小于阈值则会被value代替\ninplace：选择是否进行覆盖运算\n\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Threshold(threshold=2, value=3)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n相当于ReLU的泛化"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.hardtanh",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.hardtanh",
+    "title": "torch.nn",
+    "section": "nn.Hardtanh",
+    "text": "nn.Hardtanh\n\nmin_val：线性区域范围最小值\nmax_val：线性区域范围最大值\ninplace：选择是否进行覆盖运算\n\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Hardtanh(min_val=-1, max_val=2)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n虽然带有tanh,但和tan没什么关系。它就相当于ReLU6的泛化"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.sigmoid",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.sigmoid",
+    "title": "torch.nn",
+    "section": "nn.Sigmoid",
+    "text": "nn.Sigmoid\n\\[f ( x ) = 1 / ( 1 + e − x )\\]\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Sigmoid()(x).detach().numpy()\n\n\nplt.plot(x, y);"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.tanh",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.tanh",
+    "title": "torch.nn",
+    "section": "nn.Tanh",
+    "text": "nn.Tanh\n\\[f ( x ) = (e^x − e^x) / (e^x + e^x)\\]\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Tanh()(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n其实和sigmoid挺像的，不过更窄一点"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.logsigmoid",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.logsigmoid",
+    "title": "torch.nn",
+    "section": "nn.LogSigmoid",
+    "text": "nn.LogSigmoid\n\\[LogSigmoid(x) = log( 1 / ( 1 + e^{-x}))\\]\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.LogSigmoid()(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n也就是sigmoid的对数"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softplus",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softplus",
+    "title": "torch.nn",
+    "section": "nn.Softplus",
+    "text": "nn.Softplus\n\\[f ( x ) = \\frac{1}{beta}∗log(1+e(beta∗xi))\\]\n\nbeta：Softplus函数的beta值(默认为1)\nthreshold：阈值(i)(默认为20）\n\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Softplus(beta=1, threshold=20)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\nSoftplus函数是ReLU函数的平滑逼近"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softshrink",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softshrink",
+    "title": "torch.nn",
+    "section": "nn.Softshrink",
+    "text": "nn.Softshrink\n\\[f ( x ) = x − lambda , if x > lambda f ( x ) = x + lambda , if x < −lambda f(x)=0,otherwise\\]\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Softshrink(lambd=6)(x).detach().numpy()\n\n\nplt.plot(x, y);\n\n\n\n\n如你所见，中间的台阶大小是12"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softsign",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softsign",
+    "title": "torch.nn",
+    "section": "nn.Softsign",
+    "text": "nn.Softsign\n\\[f(x) = x / (1 + |x|)\\]\n\nx = torch.linspace(-100, 100, 1000)\ny = nn.Softsign()(x).detach().numpy()\n\n\nplt.plot(x, y);"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.tanhshrink",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.tanhshrink",
+    "title": "torch.nn",
+    "section": "nn.Tanhshrink",
+    "text": "nn.Tanhshrink\n\\[Tanhshrink ( x ) = x − Tanh ( x )\\]\n\nx = torch.linspace(-10, 10, 1000)\ny = nn.Tanhshrink()(x).detach().numpy()\n\n\nplt.plot(x, y);"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmin",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmin",
+    "title": "torch.nn",
+    "section": "nn.Softmin",
+    "text": "nn.Softmin\n它对n维输入张量运用Softmin函数，将张量的每个元素缩放到（0,1）区间且和为1。\n\nm = nn.Softmin(dim=0)\ninput0 = torch.autograd.Variable(torch.arange(0, 20).reshape(5, 4).float())\nprint(input0)\nprint(m(input0))\n\ntensor([[ 0.,  1.,  2.,  3.],\n        [ 4.,  5.,  6.,  7.],\n        [ 8.,  9., 10., 11.],\n        [12., 13., 14., 15.],\n        [16., 17., 18., 19.]])\ntensor([[9.8168e-01, 9.8168e-01, 9.8168e-01, 9.8168e-01],\n        [1.7980e-02, 1.7980e-02, 1.7980e-02, 1.7980e-02],\n        [3.2932e-04, 3.2932e-04, 3.2932e-04, 3.2932e-04],\n        [6.0317e-06, 6.0317e-06, 6.0317e-06, 6.0317e-06],\n        [1.1047e-07, 1.1047e-07, 1.1047e-07, 1.1047e-07]])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmax",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmax",
+    "title": "torch.nn",
+    "section": "nn.Softmax",
+    "text": "nn.Softmax\n和Softmin”相反“\n\nm = nn.Softmax(dim=0)\ninput0 = torch.autograd.Variable(torch.arange(0, 20).reshape(5, 4).float())\nprint(input0)\nprint(m(input0))\n\ntensor([[ 0.,  1.,  2.,  3.],\n        [ 4.,  5.,  6.,  7.],\n        [ 8.,  9., 10., 11.],\n        [12., 13., 14., 15.],\n        [16., 17., 18., 19.]])\ntensor([[1.1047e-07, 1.1047e-07, 1.1047e-07, 1.1047e-07],\n        [6.0317e-06, 6.0317e-06, 6.0317e-06, 6.0317e-06],\n        [3.2932e-04, 3.2932e-04, 3.2932e-04, 3.2932e-04],\n        [1.7980e-02, 1.7980e-02, 1.7980e-02, 1.7980e-02],\n        [9.8168e-01, 9.8168e-01, 9.8168e-01, 9.8168e-01]])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.logsoftmax",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.logsoftmax",
+    "title": "torch.nn",
+    "section": "nn.LogSoftmax",
+    "text": "nn.LogSoftmax\n\nm = nn.LogSoftmax(dim=0)\ninput0 = torch.autograd.Variable(torch.arange(0, 20).reshape(5, 4).float())\nprint(input0)\nprint(m(input0))\n\ntensor([[ 0.,  1.,  2.,  3.],\n        [ 4.,  5.,  6.,  7.],\n        [ 8.,  9., 10., 11.],\n        [12., 13., 14., 15.],\n        [16., 17., 18., 19.]])\ntensor([[-16.0185, -16.0185, -16.0185, -16.0185],\n        [-12.0185, -12.0185, -12.0185, -12.0185],\n        [ -8.0185,  -8.0185,  -8.0185,  -8.0185],\n        [ -4.0185,  -4.0185,  -4.0185,  -4.0185],\n        [ -0.0185,  -0.0185,  -0.0185,  -0.0185]])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.batchnorm2d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.batchnorm2d",
+    "title": "torch.nn",
+    "section": "nn.BatchNorm2d",
+    "text": "nn.BatchNorm2d\nnum_features, eps=1e-05, momentum=0.1, affine=True\n对小批量(mini-batch)3d数据组成的4d输入进行批标准化(Batch Normalization)操作\n\nnum_features： 来自期望输入的特征数，该期望输入的大小为’batch_size x num_features x height x width’\neps： 为保证数值稳定性（分母不能趋近或取0）,给分母加上的值。默认为1e-5。\nmomentum： 动态均值和动态方差所使用的动量。默认为0.1。\naffine： 一个布尔值，当设为true，给该层添加可学习的仿射变换参数。\n\n\n# With Learnable Parameters\nm = nn.BatchNorm2d(100)\n\n\n# Without Learnable Parameters\nm = nn.BatchNorm2d(100, affine=False)\n\n\ninput0 = torch.autograd.Variable(torch.rand(20, 100, 35, 45))\nmean = input0.mean()\nstd = input0.var()\nprint(std, var)\ninput0 = m(input0)\nmean = input0.mean()\nstd = input0.var()\nprint(std, var)\n\ntensor(0.0833) tensor(0.9999, grad_fn=<VarBackward0>)\ntensor(0.9999, grad_fn=<VarBackward0>) tensor(0.9999, grad_fn=<VarBackward0>)\n\n\n也就是把平均值变成1,标准差变成1"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.rnnargs-kwargs",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.rnnargs-kwargs",
+    "title": "torch.nn",
+    "section": "nn.RNN(args, *kwargs)",
+    "text": "nn.RNN(args, *kwargs)\n这只是一个几层全连接和激活函数组成的简单RNN而已……\n它是层啊……那没事了\n将一个多层的 Elman RNN，激活函数为tanh或者ReLU，用于输入序列。\n对输入序列中每个元素，RNN每层的计算公式为 \\[ h_t=tanh(w_{ih} x_t+b_{ih}+w_{hh} h_{t-1}+b_{hh}) \\] \\(h_t\\)是时刻\\(t\\)的隐状态。 \\(x_t\\)是上一层时刻\\(t\\)的隐状态，或者是第一层在时刻\\(t\\)的输入。如果nonlinearity=‘relu’,那么将使用relu代替tanh作为激活函数。\n\n参数\n\ninput_size – 输入x的特征数量。\nhidden_size – 隐层的特征数量。\nnum_layers – RNN的层数。\nnonlinearity – 指定非线性函数使用tanh还是relu。默认是tanh。\nbias – 如果是False，那么RNN层就不会使用偏置权重 \\(b_ih\\)和\\(b_hh\\),默认是True\nbatch_first – 如果True的话，那么输入Tensor的shape应该是[batch_size, time_step, feature],输出也是这样。\ndropout – 如果值非零，那么除了最后一层外，其它层的输出都会套上一个dropout层。\nbidirectional – 如果True，将会变成一个双向RNN，默认为False。\n\n\n\n输入 (input, h_0)\ninput(seq_len, batch, input_size): 保存输入序列特征的tensor。\ninput可以是被填充的变长的序列。细节请看torch.nn.utils.rnn.pack_padded_sequence()\n\nh_0(num_layers * num_directions, batch, hidden_size): 保存着初始隐状态的tensor\n\n\n\n输出 (output, h_n)\n\noutput (seq_len, batch, hidden_size * num_directions): 保存着RNN最后一层的输出特征。如果输入是被填充过的序列，那么输出也是被填充的序列。\nh_n (num_layers * num_directions, batch, hidden_size): 保存着最后一个时刻隐状态。\n\n\n\n属性\n\nweight_ih_l[k] – 第k层的 input-hidden 权重， 可学习，形状是(input_size x hidden_size)。\nweight_hh_l[k] – 第k层的 hidden-hidden 权重， 可学习，形状是(hidden_size x hidden_size)\nbias_ih_l[k] – 第k层的 input-hidden 偏置， 可学习，形状是(hidden_size)\nbias_hh_l[k] – 第k层的 hidden-hidden 偏置， 可学习，形状是(hidden_size)\n\n\n\n示例\n建立一个RNN\n\n#rnn = nn.RNN(10, 30, 1)\n\n\nrnn = nn.RNN(1, 1, 1)\n\n生成假数据：\ninput0为时间序列\nh0为第一份输入\n\ninput0 = Variable(torch.arange(0, 100).reshape(100, 1, -1).float())\n\nh0 = input0[0]\n\n网络的内容\n\nrnn.zero_grad()\nfor i in rnn.parameters():\n    print(i.grad)\n    #i.data.add_(-1, i.grad.data)\n\ntensor([[0.]])\ntensor([[0.]])\ntensor([0.])\ntensor([0.])\n\n\n\noutput, hn = rnn(input0[1], h0)\n\n\noutput\n\ntensor([[-1.0000]], grad_fn=<SqueezeBackward1>)\n\n\n\ninput0[1]\n\ntensor([[1.]])\n\n\n\nhn\n\ntensor([[-0.4810]], grad_fn=<SqueezeBackward1>)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lstm",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lstm",
+    "title": "torch.nn",
+    "section": "nn.LSTM",
+    "text": "nn.LSTM\n长短期记忆\n将一个多层的 (LSTM) 应用到输入序列。\n对输入序列的每个元素，LSTM的每层都会执行以下计算：\n\\[ \\begin{aligned} i_t &= sigmoid(W_{ii}x_t+b_{ii}+W_{hi}h_{t-1}+b_{hi}) \\ f_t &= sigmoid(W_{if}x_t+b_{if}+W_{hf}h_{t-1}+b_{hf}) \\ o_t &= sigmoid(W_{io}x_t+b_{io}+W_{ho}h_{t-1}+b_{ho})\\ g_t &= tanh(W_{ig}x_t+b_{ig}+W_{hg}h_{t-1}+b_{hg})\\ c_t &= f_tc_{t-1}+i_tg_t\\ h_t &= o_t*tanh(c_t) \\end{aligned} \\]\n\\(h_t\\)是时刻\\(t\\)的隐状态,\\(c_t\\)是时刻\\(t\\)的细胞状态，\\(x_t\\)是上一层的在时刻\\(t\\)的隐状态或者是第一层在时刻\\(t\\)的输入。\\(i_t, f_t, g_t, o_t\\) 分别代表 输入门，遗忘门，细胞和输出门。\n其实这东西不看也没什么关系的\n\n参数\n\ninput_size – 输入的特征维度\nhidden_size – 隐状态的特征维度\nnum_layers – 层数（和时序展开要区分开）\nbias – 如果为False，那么LSTM将不会使用\\(b_{ih},b_{hh}\\)，默认为True。\nbatch_first – 如果为True，那么输入和输出Tensor的形状为(batch, seq, feature)\ndropout – 如果非零的话，将会在RNN的输出上加个dropout，最后一层除外。\nbidirectional – 如果为True，将会变成一个双向RNN，默认为False。\n\n\n\n输入: input, (h_0, c_0)\n\ninput (seq_len, batch, input_size): 包含输入序列特征的Tensor。也可以是packed variable。\nh_0 (num_layers * num_directions, batch, hidden_size):保存着batch中每个元素的初始化隐状态的Tensor\nc_0 (num_layers * num_directions, batch, hidden_size): 保存着batch中每个元素的初始化细胞状态的Tensor\n\n\n\n输出:output, (h_n, c_n)\n\noutput (seq_len, batch, hidden_size * num_directions): 保存RNN最后一层的输出的Tensor。 如果输入是torch.nn.utils.rnn.PackedSequence，那么输出也是torch.nn.utils.rnn.PackedSequence。\nh_n (num_layers * num_directions, batch, hidden_size): Tensor，保存着RNN最后一个时间步的隐状态。\nc_n (num_layers * num_directions, batch, hidden_size): Tensor，保存着RNN最后一个时间步的细胞状态。\n\n\n\n属性\n\nweight_ih_l[k] – 第k层可学习的input-hidden权重(\\(W_{ii}|W_{if}|W_{ig}|W_{io}\\))，形状为(input_size x 4*hidden_size)\nweight_hh_l[k] – 第k层可学习的hidden-hidden权重(\\(W_{hi}|W_{hf}|W_{hg}|W_{ho}\\))，形状为(hidden_size x 4*hidden_size)。\nbias_ih_l[k] – 第k层可学习的input-hidden偏置(\\(b_{ii}|b_{if}|b_{ig}|b_{io}\\))，形状为( 4*hidden_size)\nbias_hh_l[k] – 第k层可学习的hidden-hidden偏置(\\(b_{hi}|b_{hf}|b_{hg}|b_{ho}\\))，形状为( 4*hidden_size)。\n\n\nlstm = nn.LSTM(10, 20, 2)\ninput0 = Variable(torch.randn(5, 3, 10))\nh0 = Variable(torch.randn(2, 3, 20))\nc0 = Variable(torch.randn(2, 3, 20))\noutput, hn = lstm(input0, (h0, c0))\n\n\noutput.size()\n\ntorch.Size([5, 3, 20])\n\n\n\nhn[0].size()\n\ntorch.Size([2, 3, 20])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.gru",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.gru",
+    "title": "torch.nn",
+    "section": "nn.GRU",
+    "text": "nn.GRU\n与LSTM相比，GRU内部少了一个”门控“，参数比LSTM少，但是却也能够达到与LSTM相当的功能。\n将一个多层的GRU用于输入序列。\n对输入序列中的每个元素，每层进行了一下计算：\n\\[ \\begin{aligned} r_t&=sigmoid(W_{ir}x_t+b_{ir}+W_{hr}h_{(t-1)}+b_{hr})\\ i_t&=sigmoid(W_{ii}x_t+b_{ii}+W_{hi}h_{(t-1)}+b_{hi})\\ n_t&=tanh(W_{in}x_t+b_{in}+rt(W_{hn}h_{(t-1)}+b_{hn}))\\ h_t&=(1-i_t) nt+i_t*h(t-1) \\end{aligned} \\] \\(h_t\\)是是时间\\(t\\)的上的隐状态，\\(x_t\\)是前一层\\(t\\)时刻的隐状态或者是第一层的\\(t\\)时刻的输入，\\(r_t, i_t, n_t\\)分别是重置门，输入门和新门。\n\n示例：\n\nrnn = nn.GRU(10, 20, 2)\ninput0 = Variable(torch.randn(5, 3, 10))\nh0 = Variable(torch.randn(2, 3, 20))\noutput, hn = rnn(input0, h0)\n\n\noutput.size()\n\ntorch.Size([5, 3, 20])\n\n\n\nhn.size()\n\ntorch.Size([2, 3, 20])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.rnncell",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.rnncell",
+    "title": "torch.nn",
+    "section": "nn.RNNCell",
+    "text": "nn.RNNCell\n将一个多层的 Elman RNNCell，激活函数为tanh或者ReLU，应用于输入序列。公式： \\[ h'=tanh(w_{ih} x+b_{ih}+w_{hh} h+b_{hh}) \\] 如果nonlinearity=relu，那么将会使用ReLU来代替tanh。\n\n参数\n\ninput_size – 输入\\(x\\)，特征的维度。\nhidden_size – 隐状态特征的维度。\nbias – 如果为False，RNN cell中将不会加入bias，默认为True。\nnonlinearity – 用于选择非线性激活函数 [tanh|relu]. 默认值为： tanh\n\n\n\n输入： input, hidden\n\ninput (batch, input_size): 包含输入特征的tensor。\nhidden (batch, hidden_size): 保存着初始隐状态值的tensor。\n\n\n\n输出： h’\n\nh’ (batch, hidden_size):下一个时刻的隐状态。\n\n\n\n属性：\n\nweight_ih – input-hidden 权重， 可学习，形状是(input_size x hidden_size)。\nweight_hh – hidden-hidden 权重， 可学习，形状是(hidden_size x hidden_size)\nbias_ih – input-hidden 偏置， 可学习，形状是(hidden_size)\nbias_hh – hidden-hidden 偏置， 可学习，形状是(hidden_size)\n\n\n\n示例\n初始化一个（10,20）的rnncell（类似全连接层）\n\nrnn = nn.RNNCell(10, 20)\n\n生成随机数据\n\ninput0 = Variable(torch.randn(6, 3, 10))\nhx = Variable(torch.randn(3, 20))\noutput = []\n\n进行预测\n\nfor i in range(6):\n    hx = rnn(input0[i], hx)\n    output.append(hx)\n\n\nlen(output)\n\n6"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lstmcell",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.lstmcell",
+    "title": "torch.nn",
+    "section": "nn.LSTMCell",
+    "text": "nn.LSTMCell\n公式：\n\\[ \\begin{aligned} i &= sigmoid(W_{ii}x+b_{ii}+W_{hi}h+b_{hi}) \\ f &= sigmoid(W_{if}x+b_{if}+W_{hf}h+b_{hf}) \\ o &= sigmoid(W_{io}x+b_{io}+W_{ho}h+b_{ho})\\ g &= tanh(W_{ig}x+b_{ig}+W_{hg}h+b_{hg})\\ c' &= f_tc_{t-1}+i_tg_t\\ h' &= o_t*tanh(c') \\end{aligned} \\]\n\n参数\n\ninput_size – 输入的特征维度。\nhdden_size – 隐状态的维度。\nbias – 如果为False，那么将不会使用bias。默认为True。\n\n\n\n输入: input, (h_0, c_0)\n\ninput (seq_len, batch, input_size): 包含输入序列特征的Tensor。也可以是packed variable\nh_0 ( batch, hidden_size):保存着batch中每个元素的初始化隐状态的Tensor\nc_0 (batch, hidden_size): 保存着batch中每个元素的初始化细胞状态的Tensor\n\n\n\n输出： h_1, c_1\n\nh_1 (batch, hidden_size): 下一个时刻的隐状态。\nc_1 (batch, hidden_size): 下一个时刻的细胞状态。\n\n\n\n属性:\n\nweight_ih – input-hidden权重(\\(W_{ii}|W_{if}|W_{ig}|W_{io}\\))，形状为(input_size x 4*hidden_size)\nweight_hh – hidden-hidden权重(\\(W_{hi}|W_{hf}|W_{hg}|W_{ho}\\))，形状为(hidden_size x 4*hidden_size)。\nbias_ih – input-hidden偏置(\\(b_{ii}|b_{if}|b_{ig}|b_{io}\\))，形状为( 4*hidden_size)\nbias_hh – hidden-hidden偏置(\\(b_{hi}|b_{hf}|b_{hg}|b_{ho}\\))，形状为( 4*hidden_size)。\n\n\n\n例子\n\nrnn = nn.LSTMCell(10, 20)\ninput0 = Variable(torch.randn(6, 3, 10))\nhx = Variable(torch.randn(3, 20))\ncx = Variable(torch.randn(3, 20))\noutput = []\nfor i in range(6):\n    hx, cx = rnn(input0[i], (hx, cx))\n    output.append(hx)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.grucell",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.grucell",
+    "title": "torch.nn",
+    "section": "nn.GRUCell",
+    "text": "nn.GRUCell\n同上\n\nrnn = nn.GRUCell(10, 20)\ninput0 = Variable(torch.randn(6, 3, 10))\nhx = Variable(torch.randn(3, 20))\noutput = []\nfor i in range(6):\n    hx = rnn(input0[i], hx)\n    output.append(hx)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.linearin_features-out_features-biastrue",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.linearin_features-out_features-biastrue",
+    "title": "torch.nn",
+    "section": "nn.Linear(in_features, out_features, bias=True)",
+    "text": "nn.Linear(in_features, out_features, bias=True)\n对输入数据做线性变换：\\(y = Ax + b\\)\n\n参数：\n\nin_features - 每个输入样本的大小\nout_features - 每个输出样本的大小\nbias - 若设置为False，这层不会学习偏置。默认值：True\n\n\n\n形状：\n\n输入: (N,in_features)\n输出： (N,out_features)\n\n\n\n属性：\n\nweight -形状为(out_features x in_features)的模块中可学习的权值\nbias -形状为(out_features)的模块中可学习的偏置\n\n\nm = nn.Linear(20, 30)\ninput0 = torch.autograd.Variable(torch.randn(128, 20))\noutput = m(input0)\nprint(output.size())\n\ntorch.Size([128, 30])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.dropout-nn.dropout2d3d",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.dropout-nn.dropout2d3d",
+    "title": "torch.nn",
+    "section": "nn.Dropout / nn.Dropout2d,3d",
+    "text": "nn.Dropout / nn.Dropout2d,3d\n随机将输入张量中部分元素设置为0。对于每次前向调用，被置0的元素都是随机的。\n\n参数：\n\np - 将元素置0的概率。默认值：0.5\nin-place - 若设置为True，会在原地执行操作。默认值：False\n\n\n\n形状：\n\n输入： 任意。输入可以为任意形状。\n输出： 相同。输出和输入形状相同。\n\n\n\n例子：\n\nm = nn.Dropout(p=0.2)\ninput0 = torch.autograd.Variable(torch.randn(20, 16))\noutput = m(input0)\n\n\ninput0.count_nonzero()-output.count_nonzero()\n\ntensor(46)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.pairwisedistancep2-eps1e-06",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.pairwisedistancep2-eps1e-06",
+    "title": "torch.nn",
+    "section": "nn.PairwiseDistance(p=2, eps=1e-06)",
+    "text": "nn.PairwiseDistance(p=2, eps=1e-06)\n按批计算向量v1, v2之间的距离：\n\n参数：\n\nx (Tensor): 包含两个输入batch的张量\np (real): 范数次数，默认值：2\n\n\n\n输入： (N,D)，其中D=向量维数\n\n\n输出： (N,1)\n\npdist = nn.PairwiseDistance(2)\ninput1 = autograd.Variable(torch.randn(5, 128))\ninput2 = autograd.Variable(torch.randn(5, 128))\noutput = pdist(input1, input2)\n\n\noutput\n\ntensor([15.8720, 17.3040, 16.8190, 16.7946, 16.5825])"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.l1loss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.l1loss",
+    "title": "torch.nn",
+    "section": "nn.L1Loss",
+    "text": "nn.L1Loss\n创建一个衡量输入x(模型预测输出)和目标y之间差的绝对值的平均值的标准。\n\\[loss(x,y)=1/n∑|xi−yi|\\]\n\nx 和 y 可以是任意形状，每个包含n个元素。\n对n个元素对应的差值的绝对值求和，得出来的结果除以n。\n如果在创建L1Loss实例的时候在构造函数中传入size_average=False，那么求出来的绝对值的和将不会除以n"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.mseloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.mseloss",
+    "title": "torch.nn",
+    "section": "nn.MSELoss",
+    "text": "nn.MSELoss\n创建一个衡量输入x(模型预测输出)和目标y之间均方误差标准。\n\\[loss(x,y)=1/n∑(xi−yi)^2\\]\n\nx 和 y 可以是任意形状，每个包含n个元素。\n对n个元素对应的差值的绝对值求和，得出来的结果除以n。\n如果在创建MSELoss实例的时候在构造函数中传入size_average=False，那么求出来的平方和将不会除以n"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.crossentropyloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.crossentropyloss",
+    "title": "torch.nn",
+    "section": "nn.CrossEntropyLoss",
+    "text": "nn.CrossEntropyLoss\n交叉熵损失\n此标准将LogSoftMax和NLLLoss集成到一个类中。\n当训练一个多类分类器的时候，这个方法是十分有用的。\n\nweight(tensor): 1-D tensor，n个元素，分别代表n类的权重，如果你的训练样本很不均衡的话，是非常有用的。默认值为None。\n\n\n调用时参数：\n\ninput : 包含每个类的得分，2-D tensor,shape为 batch*n\ntarget: 大小为 n 的 1—D tensor，包含类别的索引(0到 n-1)。\n计算出的loss对mini-batch的大小取了平均。\n\n\n\n形状(shape)：\n\nInput: (N,C) C 是类别的数量\nTarget: (N) N是mini-batch的大小，0 <= targets[i] <= C-1"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.nllloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.nllloss",
+    "title": "torch.nn",
+    "section": "nn.NLLLoss",
+    "text": "nn.NLLLoss\n负对数似然\n用于训练一个n类分类器。\nweight参数应该是一个1-Dtensor(如果提供的话)，里面的值对应类别的权重。当你的训练集样本不均衡的话，使用这个参数是非常有用的。\n输入是一个包含类别log-probabilities的2-D tensor，形状是（mini-batch， n）\n可以通过在最后一层加LogSoftmax来获得类别的log-probabilities。\n如果您不想增加一个额外层的话，您可以使用CrossEntropyLoss。\n此loss期望的target是类别的索引 (0 to N-1, where N = number of classes)\n\n参数：\n\nweight (Tensor, optional) – 手动指定每个类别的权重。如果给定的话，必须是长度为nclasses\nsize_average (bool, optional) – 默认情况下，会计算mini-batch loss的平均值。然而，如果size_average=False那么将会把mini-batch中所有样本的loss累加起来。\n\n\n\n形状:\n\nInput: (N,C) , C是类别的个数\nTarget: (N) ， target中每个值的大小满足 0 <= targets[i] <= C-1\n\n\n\n例子：\n\nm = nn.LogSoftmax(dim=0)\nloss = nn.NLLLoss()\n# input is of size nBatch x nClasses = 3 x 5\ninput0 = autograd.Variable(torch.randn(3, 5), requires_grad=True)\n# each element in target has to have 0 <= value < nclasses\ntarget = autograd.Variable(torch.LongTensor([1, 0, 4]))\noutput = loss(m(input0), target)\noutput.backward()\n\n\n\nnn.NLLLoss2d\n\nweight (Tensor, optional) – 用来作为每类的权重(如果提供的话),必须为1-Dtensor，大小为C：类别的个数。\nsize_average – 默认情况下，会计算 mini-batch loss均值。如果设置为 False 的话，将会累加mini-batch中所有样本的loss值。默认值：True。\n\n\n\nnn.KLDivLoss\n相对熵损失\n相对熵 = 某个策略的交叉熵 - 信息熵\n计算 KL 散度损失。\nKL散度常用来描述两个分布的距离，并在输出分布的空间上执行直接回归是有用的。\n与NLLLoss一样，给定的输入应该是log-probabilities。然而。和NLLLoss不同的是，input不限于2-D tensor，因为此标准是基于element的。\ntarget 应该和 input的形状相同。\n默认情况下，loss会基于element求平均。如果 size_average=False,loss 会被累加起来。"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.bceloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.bceloss",
+    "title": "torch.nn",
+    "section": "nn.BCELoss",
+    "text": "nn.BCELoss\n计算 target 与 output 之间的二元交叉熵。\n\\[ loss(o,t)=-\\frac{1}{n}\\sum_i(t[i] log(o[i])+(1-t[i]) log(1-o[i])) \\]\n如果weight被指定 ：\n\\[ loss(o,t)=-\\frac{1}{n}\\sum_iweights[i] (t[i] log(o[i])+(1-t[i])* log(1-o[i])) \\]"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.marginrankingloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.marginrankingloss",
+    "title": "torch.nn",
+    "section": "nn.MarginRankingLoss",
+    "text": "nn.MarginRankingLoss\n排序损失函数\n创建一个标准，给定输入 \\(x1\\),\\(x2\\)两个1-D mini-batch Tensor’s，和一个\\(y\\)(1-D mini-batch tensor) ,\\(y\\)里面的值只能是-1或1。\n如果 y=1，代表第一个输入的值应该大于第二个输入的值，如果y=-1的话，则相反。"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.hingeembeddingloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.hingeembeddingloss",
+    "title": "torch.nn",
+    "section": "nn.HingeEmbeddingLoss",
+    "text": "nn.HingeEmbeddingLoss\n用于判断两个向量是否相似，输入是两个向量之间的距离\n给定一个输入 \\(x\\)(2-D mini-batch tensor)和对应的 标签 \\(y\\) (1-D tensor,1,-1)，此函数用来计算两组向量之间的损失值。这个loss通常用来测量两个输入是否相似，即：使用L1 成对距离。典型是用在学习非线性 embedding或者半监督学习中：\n\\(x\\)和\\(y\\)可以是任意形状，且都有n的元素，loss的求和操作作用在所有的元素上，然后除以n。如果您不想除以n的话，可以通过设置size_average=False。\n\n例子：\n\nhinge_loss = nn.HingeEmbeddingLoss(margin=0.2)\na = torch.randn(100, 128, requires_grad=True)\nb = torch.randn(100, 128, requires_grad=True)\nx = 1 - torch.cosine_similarity(a, b)\n# 定义a与b之间的距离为x\nprint(x.size())\ny = 2 * torch.empty(100).random_(2) - 1\noutput = hinge_loss(x, y)\nprint(output.item())\n\nhinge_loss = nn.HingeEmbeddingLoss(margin=0.2, reduction=\"none\")\noutput = hinge_loss(x, y)\nprint(output)\n\ntorch.Size([100])\n0.4487411081790924\ntensor([0.0000, 0.0000, 0.0000, 0.0000, 0.9112, 0.0000, 0.9974, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0311, 0.0000, 0.0000, 0.0000, 1.0199, 0.0000, 0.9601, 0.0000, 1.0657, 0.8382, 1.0400, 1.0655,\n        0.0000, 0.8794, 0.0000, 1.0720, 1.0367, 1.0841, 0.8692, 1.0141, 0.0000, 0.9980, 0.0000, 0.9341, 1.0703, 1.0783, 1.1506, 0.0000, 0.8374, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.1050,\n        0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.1145, 1.0173, 0.0000, 0.0000, 0.9589, 0.0000, 1.0414, 0.8126, 0.8562, 0.0000, 1.2132, 1.0313, 0.0000, 0.0000, 1.0011, 0.0000, 0.0000, 1.1065,\n        0.0000, 1.0584, 0.0000, 1.1716, 0.0000, 0.9385, 0.0000, 0.9754, 0.0000, 0.0000, 1.0354, 0.0000, 1.0717, 0.0000, 0.0000, 1.1551, 0.0000, 0.8999, 0.0000, 1.1494, 0.0000, 0.0000, 1.0500, 0.0000,\n        0.0000, 0.9993, 0.0000, 1.1581], grad_fn=<AddBackward0>)"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.multilabelmarginloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.multilabelmarginloss",
+    "title": "torch.nn",
+    "section": "nn.MultiLabelMarginLoss",
+    "text": "nn.MultiLabelMarginLoss\n计算多标签分类的 hinge loss(margin-based loss) ，计算loss时需要两个输入： input x(2-D mini-batch Tensor)，和 output y(2-D tensor表示mini-batch中样本类别的索引)。\n\n例子：\n\nx = torch.FloatTensor([[0.1, 0.2, 0.4, 0.8], [0.1, 0.2, 0.4, 0.8]])\nprint(x.size())\ny = torch.LongTensor([3, 3])\nprint(y.size())\n\nloss = nn.MultiMarginLoss(reduction=\"none\")\nloss_val = loss(x, y)\nprint(loss_val)\n\nloss = nn.MultiMarginLoss(reduction=\"sum\")\nloss_val = loss(x, y)\nprint(loss_val.item())\nprint(loss_val.item() / x.size(0))\n#验证\nprint(1 / 2 * 1 / 4 * ((1 - 0.8 + 0.1) + (1 - 0.8 + 0.2) + (1 - 0.8 + 0.4) +\n                       (1 - 0.8 + 0.1) + (1 - 0.8 + 0.2) + (1 - 0.8 + 0.4)))\n\ntorch.Size([2, 4])\ntorch.Size([2])\ntensor([0.3250, 0.3250])\n0.6499999761581421\n0.32499998807907104\n0.32499999999999996"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.smoothl1loss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.smoothl1loss",
+    "title": "torch.nn",
+    "section": "nn.SmoothL1Loss",
+    "text": "nn.SmoothL1Loss\n平滑版L1 loss。\n此loss对于异常点的敏感性不如MSELoss，而且，在某些情况下防止了梯度爆炸，(参照 Fast R-CNN)。这个loss有时也被称为 Huber loss。"
+  },
+  {
+    "objectID": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmarginloss",
+    "href": "blog/posts/22_12_23_torch.nn/12_23_torch.nn.html#nn.softmarginloss",
+    "title": "torch.nn",
+    "section": "nn.SoftMarginLoss",
+    "text": "nn.SoftMarginLoss\n用于二分类任务"
+  },
+  {
+    "objectID": "blog/posts/23_03_08_wcpdtoolbox/03_08_wcpdtoolbox.html",
+    "href": "blog/posts/23_03_08_wcpdtoolbox/03_08_wcpdtoolbox.html",
+    "title": "WcpDToolBox",
+    "section": "",
+    "text": "制作了一组工具包,为了美好的生活\n\n\n\n使用Vim-Plug安装了一些插件,vim变得更好看了"
+  },
+  {
+    "objectID": "blog/posts/23_03_09_模型的解释/03_09_模型的解释.html",
+    "href": "blog/posts/23_03_09_模型的解释/03_09_模型的解释.html",
+    "title": "模型的解释",
+    "section": "",
+    "text": "from wcpdtoolbox.visualization import *\n# from fastai.callback.hook import *\nfrom fastai.test_utils import *\nmodel = resnet18().cuda()\n对于一个模型,我们可以轻易查看它的输入和输出.但是,它的中间层仍然对我不可知.\n现在,我需要克服这个缺陷"
+  },
+  {
+    "objectID": "blog/posts/23_03_09_模型的解释/03_09_模型的解释.html#summary-model",
+    "href": "blog/posts/23_03_09_模型的解释/03_09_模型的解释.html#summary-model",
+    "title": "模型的解释",
+    "section": "Summary Model",
+    "text": "Summary Model\n\n观察模型各层的grad\n\n\nc = L()\n\n\nadam = Adam(model.parameters(), 1e-4)\n\n\nfor i in range(30):\n    l = L()\n    x = model(torch.randn(20,3,64,64).cuda())\n    x.sum().abs().backward()\n    adam.step()\n    for i in model.parameters():\n        l.append(i)\n    l = l.map(lambda x:to_detach(x.grad.abs().mean()))\n    model.zero_grad()\n    c.append(l)\nc2 = c.copy()\nc2.reverse()\nplt.imshow(np.log1p(array(c2).T))\nplt.show()\n\nprint(x.sum())\n\nMIOpen(HIP): Warning [SQLiteBase] Missing system database file: gfx1030_16.kdb Performance may degrade. Please follow instructions to install: https://github.com/ROCmSoftwarePlatform/MIOpen#installing-miopen-kernels-package\n\n\n\n\n\ntensor(-74.4779, device='cuda:0', grad_fn=<SumBackward0>)\n\n\n这样就可以看见它的梯度了,不过依然没有名字\n\n制作一个显示梯度的callback\n\nlearner = synth_learner()\n\n\nclass GradShowCallback(Callback):\n    def __init__(self, l, **kwargs): \n        assert not kwargs, f'Passed unknown events: {kwargs}'\n        self.grad_list = l\n    def before_step(self):\n        k = L([to_detach(i.grad.abs().mean()) for i in self.learn.model.parameters()])\n        self.grad_list.append(k)\n    \n    def after_fit(self):\n        [plt.plot(i) for i in array(self.grad_list).T]\n        plt.show()\n\n\nl = L()\n\n\nlearner.fit_one_cycle(10, cbs=GradShowCallback(l))\n\n\n\n\n\n\n\n  \n    \n      epoch\n      train_loss\n      valid_loss\n      time\n    \n  \n  \n    \n      0\n      25.333673\n      27.027384\n      00:00\n    \n    \n      1\n      23.795195\n      21.430862\n      00:00\n    \n    \n      2\n      20.932470\n      15.259192\n      00:00\n    \n    \n      3\n      17.989950\n      11.353888\n      00:00\n    \n    \n      4\n      15.402375\n      8.668013\n      00:00\n    \n    \n      5\n      13.202624\n      6.830383\n      00:00\n    \n    \n      6\n      11.358438\n      5.623485\n      00:00\n    \n    \n      7\n      9.841968\n      4.950937\n      00:00\n    \n    \n      8\n      8.626709\n      4.664057\n      00:00\n    \n    \n      9\n      7.678516\n      4.614231\n      00:00\n    \n  \n\n\n\n\n\n\n更新:\n\nfrom plotly import graph_objects as go\n\n\nclass GradShowCallback(Callback):\n    def __init__(self,l=None, show=True):\n        self.grad_list = L() if l is None else l\n        self.show = show\n        \n    def before_step(self):\n        grads = []\n        for i in self.learn.model.parameters():\n            if not i.grad is None:\n                grads.append(to_detach(i.grad.abs().mean()))\n            else:\n                grads.append(tensor(0.))\n        self.grad_list.append(grads)\n    \n    def after_fit(self):\n        if not self.show:\n            return\n        fig = go.Figure()\n        name = [name for name, _ in self.learn.model.named_parameters()]\n        arr = array(self.grad_list).T\n        x = np.arange(len(self.grad_list))\n        for a,n in zip(arr, name):\n            fig.add_trace(go.Scatter(x=x, y=a, name=n))\n        fig.show()\n\n\nlearner = synth_learner()\n\n\nlearner.fit_one_cycle(10, cbs=GradShowCallback(l))\n\n\n\n\n\n\n\n  \n    \n      epoch\n      train_loss\n      valid_loss\n      time\n    \n  \n  \n    \n      0\n      15.332655\n      15.399384\n      00:00\n    \n    \n      1\n      14.451164\n      12.325535\n      00:00\n    \n    \n      2\n      12.793344\n      8.908071\n      00:00\n    \n    \n      3\n      11.070920\n      6.616061\n      00:00\n    \n    \n      4\n      9.531049\n      5.079659\n      00:00\n    \n    \n      5\n      8.209394\n      4.044551\n      00:00\n    \n    \n      6\n      7.098516\n      3.371369\n      00:00\n    \n    \n      7\n      6.185102\n      2.984177\n      00:00\n    \n    \n      8\n      5.451753\n      2.818964\n      00:00\n    \n    \n      9\n      4.879062\n      2.789715\n      00:00"
+  },
+  {
+    "objectID": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html",
+    "href": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html",
+    "title": "从零(存疑)开始的聊天机器人",
+    "section": "",
+    "text": "from flask import Flask, request\nimport numpy as np\nimport whisper\nimport zhconv\nimport torch\nfrom wcpdtoolbox.imports import *\n一直想要一个聊天机器人–也就是那种可以聊天的机器人(废话)\n就是像siri那样可以听和读并且可以设置提醒,像chatgpt那样有能,并且最好接入qq什么的"
+  },
+  {
+    "objectID": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html#需要的东西",
+    "href": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html#需要的东西",
+    "title": "从零(存疑)开始的聊天机器人",
+    "section": "需要的东西",
+    "text": "需要的东西\n首先,想想我需要什么来构筑这个…管道\n\n音频网络之类的接口\n语音转文字+文字转语音\n自然语言处理\n一大堆数据集\n\n有了这些,大概就可以构筑这个模型了…至于形象,可以之后设置\n\n\n\nimage.png"
+  },
+  {
+    "objectID": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html#语音识别",
+    "href": "blog/posts/23_03_11_聊天机器人尝试/03_11_聊天机器人尝试.html#语音识别",
+    "title": "从零(存疑)开始的聊天机器人",
+    "section": "语音识别",
+    "text": "语音识别\n步子不能迈太大:所以我准备先把语音识别处理了\n一个后端与一个前端,但是前端我不是很熟…慢慢来吧\n\n使用预训练模型\n使用openai-whisper\n\nmodel = whisper.load_model(\"small\", device=\"cuda\")\n\n\n快速\n\npred = model.transcribe(\"/ailearn/dataset/voice_dataset/audios/long0.wav\")\nzhconv.convert(pred[\"text\"],  'zh-hans')\n\nCPU times: user 2.72 s, sys: 0 ns, total: 2.72 s\nWall time: 2.47 s\n\n\n'语音识别技术的应用包括语音波号,语音导航室内设备控制,语音文档检索,简单的听写数据输入等。语音识别技术与其他自然语言处理技术如机器翻译及语音课程技术相结合,可以构建出更加复杂的应用。语音识别技术作设举的领域包括信号处理,模式识别,概率论和信息论,发声机理和视觉听理,人工智能等等。'\n\n\n效果挺好\n\n\n内部\n加载音频\n\naudio = whisper.load_audio(\"/ailearn/dataset/voice_dataset/audios/long0.wav\")\n# audio = np.random.randn(1000).astype(np.float32)*10\naudio = whisper.pad_or_trim(audio)\nmel = whisper.log_mel_spectrogram(audio).to(model.device)\n\n\naudio.dtype\n\ndtype('float32')\n\n\n\nplt.imshow(to_detach(mel))\nplt.show()\n\n\n\n\ndecode the audio\n\noptions = whisper.DecodingOptions()\nresult = whisper.decode(model, mel, options)\n\nCPU times: user 1.63 s, sys: 0 ns, total: 1.63 s\nWall time: 1.49 s\n\n\n\nresult.text\n\n'语音识别技术的应用包括语音波号,语音导航室内设备控制,语音文档检索,简单的听写数据输入等。语音识别技术与其他自然语言处理技术如机器翻译及语音课程技术相结合,可以构建出更加复杂的应用。'\n\n\n居然要整整1.5s来处理这东西…\n\n\n\n应用\n应用需要制作一个可以使用get-post的东西,也就是后端 - 收:音频array - 发:文本\n\napp = Flask(__name__)\n\n\ndef pred_bytes(data):\n    data = torch.frombuffer(data, dtype=torch.float32).float()\n    data = whisper.pad_or_trim(data)\n    mel = whisper.log_mel_spectrogram(data).to(model.device)\n    plt.imshow(to_detach(mel))\n    options = whisper.DecodingOptions()\n    result = whisper.decode(model, mel, options)\n    return result.text\n    # nrint(pred)\n    # return \"qwq\"\n\n\ndef pred_bytes(data):\n    data = torch.frombuffer(data, dtype=torch.int16).float()\n    data = whisper.pad_or_trim(data)\n    mel = whisper.log_mel_spectrogram(data).to(model.device)\n    options = whisper.DecodingOptions()\n    result = whisper.decode(model, mel, options)\n    return result.text\n\n\naudio = whisper.load_audio(\"/ailearn/dataset/voice_dataset/audios/long0.wav\")\n\n\npred_bytes(audio.tobytes())\n\n'语音识别技术的应用包括语音波号,语音导航室内设备控制,语音文档检索,简单的听写数据输入等。语音识别技术与其他自然语言处理技术如机器翻译及语音课程技术相结合,可以构建出更加复杂的应用。'\n\n\n\n\n\n\n@app.route('/', methods=['GET', 'POST'])\ndef upload_file():\n    if request.method == 'POST':\n        text = pred_bytes(request.data)\n        return text\n    return \"upload_frame\"\n\n\napp.run(port=43692)\n\n * Serving Flask app '__main__'\n * Debug mode: off\n\n\nWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\n * Running on http://127.0.0.1:43692\nPress CTRL+C to quit\n127.0.0.1 - - [13/Mar/2023 15:39:08] \"POST / HTTP/1.1\" 200 -"
+  },
+  {
+    "objectID": "blog/index.html",
+    "href": "blog/index.html",
+    "title": "Doucx’s Blog",
+    "section": "",
+    "text": "从零(存疑)开始的聊天机器人\n\n\n\n\n\n尝试制作一个真实可以聊天的聊天机器人\n\n\n\n\n\n\nMar 11, 2023\n\n\nDoucx\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n模型的解释\n\n\n\n\n\n尝试制作一个用于解释模型的组件\n\n\n\n\n\n\nMar 9, 2023\n\n\nDoucx\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWcpDToolBox\n\n\n\n\n\nNone\n\n\n\n\n\n\nMar 8, 2023\n\n\nDoucx\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n人声增强\n\n\n\n\n\n尝试制作一个增强人声的模型-On Unet\n\n\n\n\n\n\nJan 6, 2023\n\n\nDoucx\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ntorch.nn\n\n\n\n\n\ntorch.nn 模块\n\n\n\n\n\n\nDec 23, 2022\n\n\nDoucx\n\n\n\n\n\n\nNo matching items"
+  }
+]
